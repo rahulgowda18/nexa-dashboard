@@ -107,3 +107,5 @@ After this application works locally:
 8. Kubernetes
 9. Helm
 10. Prometheus/Grafana
+ 111
+ 12
