@@ -5,7 +5,7 @@ import {
   Search, Settings, Sun, Trash2, TrendingUp, UserRound, Users, X
 } from 'lucide-react'
 
-const API = import.meta.env.VITE_API_URL || 'http://13.233.194.200/api'
+const API = import.meta.env.VITE_API_URL || 'http://15.207.110.91/api'
 
 const emptyForm = {
   name: '', email: '', role: '', department: 'Engineering',
