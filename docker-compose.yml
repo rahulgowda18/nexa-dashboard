@@ -1,80 +1,48 @@
 name: nexa-dashboard
 services:
+
+  mysql:
+    image: mysql:8.4
+    container_name: nexa-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: nexa_db
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./database/schema.sql:/docker-entrypoint-initdb.d/schema.sql:ro
+
   backend:
+    build: ./backend
     container_name: nexa-backend
-    depends_on:
-      mysql:
-        condition: service_started
-        required: true
+    restart: unless-stopped
     environment:
       DB_HOST: mysql
-      DB_NAME: nexa_db
-      DB_PASSWORD: root
-      DB_PORT: "3306"
+      DB_PORT: 3306
       DB_USER: root
-    image: rahulgowda526/nexa-backend:latest
-    networks:
-      default: null
-    restart: unless-stopped
+      DB_PASSWORD: root
+      DB_NAME: nexa_db
+    depends_on:
+      - mysql
+
   frontend:
+    build: ./frontend
     container_name: nexa-frontend
+    restart: unless-stopped
     depends_on:
-      backend:
-        condition: service_started
-        required: true
-    image: rahulgowda526/nexa-frontend:latest
-    networks:
-      default: null
-    restart: unless-stopped
-  mysql:
-    container_name: nexa-mysql
-    environment:
-      MYSQL_DATABASE: nexa_db
-      MYSQL_ROOT_PASSWORD: root
-    image: mysql:8.4
-    networks:
-      default: null
-    restart: unless-stopped
-    volumes:
-      - type: volume
-        source: mysql_data
-        target: /var/lib/mysql
-        volume: {}
-      - type: bind
-        source: /home/ubuntu/nexa-dashboard/database/schema.sql
-        target: /docker-entrypoint-initdb.d/schema.sql
-        read_only: true
-        bind:
-          create_host_path: true
+      - backend
+
   nginx:
-    container_name: nexa-nginx
-    depends_on:
-      backend:
-        condition: service_started
-        required: true
-      frontend:
-        condition: service_started
-        required: true
     image: nginx:alpine
-    networks:
-      default: null
-    ports:
-      - mode: ingress
-        target: 80
-        published: "80"
-        protocol: tcp
+    container_name: nexa-nginx
     restart: unless-stopped
+    ports:
+      - "80:80"
     volumes:
-      - type: bind
-        source: /home/ubuntu/nexa-dashboard/nginx/default.conf
-        target: /etc/nginx/conf.d/default.conf
-        read_only: true
-        bind:
-          create_host_path: true
-networks:
-  default:
-    name: nexa-dashboard_default
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - frontend
+      - backend
+
 volumes:
   mysql_data:
-    name: nexa-dashboard_mysql_data
-
