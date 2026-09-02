@@ -13,7 +13,7 @@ services:
       - ./database/schema.sql:/docker-entrypoint-initdb.d/schema.sql:ro
 
   backend:
-    build: ./backend
+    image: rahulgowda526/nexa-backend:latest
     container_name: nexa-backend
     restart: unless-stopped
     environment:
@@ -26,7 +26,7 @@ services:
       - mysql
 
   frontend:
-    build: ./frontend
+    image: rahulgowda526/nexa-backend:latest
     container_name: nexa-frontend
     restart: unless-stopped
     depends_on:
