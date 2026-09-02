@@ -26,7 +26,7 @@ services:
       - mysql
 
   frontend:
-    image: rahulgowda526/nexa-backend:latest
+    image: rahulgowda526/nexa-frontend:latest
     container_name: nexa-frontend
     restart: unless-stopped
     depends_on:
