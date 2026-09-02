@@ -35,15 +35,15 @@ jobs:
         run: |
           docker push ${{ secrets.DOCKERHUB_USERNAME }}/nexa-frontend:latest
 
-      - name: Deploy to EC2
-        uses: appleboy/ssh-action@v1.2.2
-        with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USERNAME }}
-          key: ${{ secrets.EC2_SSH_KEY }}
-          script: |
-            cd ~/nexa-dashboard && \
-            git pull origin main && \
-            docker-compose pull && \
-            docker-compose down && \
-            docker-compose up -d
+      # # - name: Deploy to EC2
+      # #   uses: appleboy/ssh-action@v1.2.2
+      # #   with:
+      # #     host: ${{ secrets.EC2_HOST }}
+      # #     username: ${{ secrets.EC2_USERNAME }}
+      # #     key: ${{ secrets.EC2_SSH_KEY }}
+      # #     script: |
+      # #       cd ~/nexa-dashboard && \
+      #       git pull origin main && \
+      #       docker-compose pull && \
+      #       docker-compose down && \
+      #       docker-compose up -d
