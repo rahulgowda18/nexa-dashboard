@@ -1,0 +1,76 @@
+name: NEXA CI/CD
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+
+      # 1. Checkout repository
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # 2. Login to Docker Hub
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      # 3. Build backend
+      - name: Build backend image
+        run: |
+          docker build \
+            -t ${{ secrets.DOCKERHUB_USERNAME }}/nexa-backend:latest \
+            ./backend
+
+      # 4. Build frontend
+      - name: Build frontend image
+        run: |
+          docker build \
+            -t ${{ secrets.DOCKERHUB_USERNAME }}/nexa-frontend:latest \
+            ./frontend
+
+      # 5. Push backend
+      - name: Push backend image
+        run: |
+          docker push \
+            ${{ secrets.DOCKERHUB_USERNAME }}/nexa-backend:latest
+
+      # 6. Push frontend
+      - name: Push frontend image
+        run: |
+          docker push \
+            ${{ secrets.DOCKERHUB_USERNAME }}/nexa-frontend:latest
+
+      # 7. Deploy to EC2
+      - name: Deploy to EC2
+        uses: appleboy/ssh-action@v1.2.2
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ubuntu
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            cd ~/nexa-dashboard
+
+            echo "Pulling latest code..."
+            git pull origin main
+
+            echo "Pulling latest Docker images..."
+            docker compose pull
+
+            echo "Restarting NEXA..."
+            docker compose up -d
+
+            echo "Removing unused images..."
+            docker image prune -f
+
+            echo "Deployment completed!"
+
+            docker compose ps
