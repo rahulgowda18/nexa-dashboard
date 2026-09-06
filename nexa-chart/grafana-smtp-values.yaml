@@ -1,0 +1,16 @@
+grafana:
+  extraSecretMounts:
+    - name: grafana-smtp
+      secretName: grafana-smtp-secret
+      defaultMode: 0440
+      mountPath: /etc/secrets/grafana-smtp
+      readOnly: true
+
+  grafana.ini:
+    smtp:
+      enabled: true
+      host: smtp.gmail.com:587
+      user: $__file{/etc/secrets/grafana-smtp/user}
+      password: $__file{/etc/secrets/grafana-smtp/password}
+      from_address: gowdarahul185@gmail.com
+      startTLS_policy: Mandatory
