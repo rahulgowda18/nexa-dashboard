@@ -1,3 +1,4 @@
+
 name: NEXA Dashboard CI/CD
 
 on:
@@ -6,44 +7,99 @@ on:
       - main
 
 jobs:
-  build-and-push:
+  build-push-deploy:
     runs-on: ubuntu-latest
 
     steps:
+
+      # 1. Checkout source code
       - name: Checkout code
         uses: actions/checkout@v4
 
+      # 2. Configure Docker Buildx
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # 3. Login to Docker Hub
       - name: Login to Docker Hub
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Build Backend Image
-        run: |
-          docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/nexa-backend:latest ./backend
+      # 4. Build and push Backend image
+      - name: Build and push backend
+        uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          push: true
+          tags: |
+            ${{ secrets.DOCKERHUB_USERNAME }}/nexa-backend:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/nexa-backend:${{ github.sha }}
 
-      - name: Build Frontend Image
-        run: |
-          docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/nexa-frontend:latest ./frontend
+      # 5. Build and push Frontend image
+      - name: Build and push frontend
+        uses: docker/build-push-action@v6
+        with:
+          context: ./frontend
+          push: true
+          tags: |
+            ${{ secrets.DOCKERHUB_USERNAME }}/nexa-frontend:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/nexa-frontend:${{ github.sha }}
 
-      - name: Push Backend Image
-        run: |
-          docker push ${{ secrets.DOCKERHUB_USERNAME }}/nexa-backend:latest
+      # 6. Configure AWS credentials
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ap-south-1
 
-      - name: Push Frontend Image
+      # 7. Configure kubectl for EKS
+      - name: Update kubeconfig
         run: |
-          docker push ${{ secrets.DOCKERHUB_USERNAME }}/nexa-frontend:latest
+          aws eks update-kubeconfig \
+            --region ap-south-1 \
+            --name nexa-eks
 
-      # # - name: Deploy to EC2
-      # #   uses: appleboy/ssh-action@v1.2.2
-      # #   with:
-      # #     host: ${{ secrets.EC2_HOST }}
-      # #     username: ${{ secrets.EC2_USERNAME }}
-      # #     key: ${{ secrets.EC2_SSH_KEY }}
-      # #     script: |
-      # #       cd ~/nexa-dashboard && \
-      #       git pull origin main && \
-      #       docker-compose pull && \
-      #       docker-compose down && \
-      #       docker-compose up -d
+      # 8. Update Backend deployment
+      - name: Deploy backend to EKS
+        run: |
+          kubectl set image deployment/backend \
+            backend=${{ secrets.DOCKERHUB_USERNAME }}/nexa-backend:${{ github.sha }} \
+            -n nexa
+
+      # 9. Update Frontend deployment
+      - name: Deploy frontend to EKS
+        run: |
+          kubectl set image deployment/frontend \
+            frontend=${{ secrets.DOCKERHUB_USERNAME }}/nexa-frontend:${{ github.sha }} \
+            -n nexa
+
+      # 10. Wait for Backend rollout
+      - name: Verify backend deployment
+        run: |
+          kubectl rollout status deployment/backend \
+            -n nexa \
+            --timeout=180s
+
+      # 11. Wait for Frontend rollout
+      - name: Verify frontend deployment
+        run: |
+          kubectl rollout status deployment/frontend \
+            -n nexa \
+            --timeout=180s
+
+      # 12. Display final deployment status
+      - name: Check NEXA deployment
+        run: |
+          echo "===== NEXA PODS ====="
+          kubectl get pods -n nexa
+
+          echo "===== NEXA SERVICES ====="
+          kubectl get svc -n nexa
+
+          echo "===== NEXA DEPLOYMENTS ====="
+          kubectl get deployments -n nexa
+
+     
